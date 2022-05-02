@@ -44,6 +44,17 @@ class Connect4:
 
     def __str__(self) -> str:
         return self.board.__str__()
+    
+    def reset(self) -> np.ndarray:
+        """
+        Reset the game to initial state
+
+        Returns
+        -------
+            a 2d array which represent the state of the board
+        """
+        self.__init__()
+        return self.board
 
     def step(self, action: int, item: int) -> None:
         """
