@@ -23,7 +23,7 @@ class Connect4:
     step(action, item)
         Insert item into a column based on action
     reset()
-        Reset the game to initial state
+        Reset the game to initial state and return state of the game
     _get_vers()
         Return all possible vertical result
     _get_hors()
@@ -39,8 +39,12 @@ class Connect4:
         Create a 7 x 6 board for the regular connect four game.
         Create a list to keep track of the empty slot of each column.
         """
-        self.board = np.full((6, 7), 0)
-        self._col_ptr = np.full(7, 5)
+        self.state_dim = (6, 7)
+        self.action_space = np.arange(7)
+        self.action_dim = len(self.action_space)
+        
+        self.board = np.full(self.state_dim, 0)
+        self._col_ptr = np.full(self.action_dim, 5)
 
     def __str__(self) -> str:
         return self.board.__str__()
@@ -51,10 +55,10 @@ class Connect4:
 
         Returns
         -------
-            a 2d array which represent the state of the board
+            a flatten array which represent the state of the board
         """
         self.__init__()
-        return self.board
+        return self.board.flatten()
 
     def step(self, action: int, item: int) -> Tuple[np.ndarray, float, bool]:
         """
@@ -71,6 +75,12 @@ class Connect4:
         ------
         Exception
             if selected column is fulled.
+
+        Returns
+        -------
+            a flatten array which represents the state of the board, 
+            a reward in flaot type and, 
+            a boolean that represents termination
         """
         assert 0 <= action <= 6
         row = self._col_ptr[action]
@@ -88,7 +98,7 @@ class Connect4:
         elif result == 2:
             done = True
             reward -= 1
-        return self.board, reward, done
+        return self.board.flatten(), reward, done
 
     def _get_vers(self) -> List[List[int]]:
         """
