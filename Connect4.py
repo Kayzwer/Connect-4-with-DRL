@@ -22,6 +22,8 @@ class Connect4:
     -------
     step(action, item)
         Insert item into a column based on action
+    reset()
+        Reset the game to initial state
     _get_vers()
         Return all possible vertical result
     _get_hors()
