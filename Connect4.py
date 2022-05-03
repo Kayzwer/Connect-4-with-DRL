@@ -56,7 +56,7 @@ class Connect4:
         self.__init__()
         return self.board
 
-    def step(self, action: int, item: int) -> Tuple[np.ndarray, float]:
+    def step(self, action: int, item: int) -> Tuple[np.ndarray, float, bool]:
         """
         Insert item into given column index
 
@@ -79,13 +79,16 @@ class Connect4:
         self.board[row][action] = item
         self._col_ptr[action] -= 1
 
+        done = False
         reward = 0
         result = self.check_win()
         if result == 1:
+            done = True
             reward += 1
         elif result == 2:
+            done = True
             reward -= 1
-        return self.board, reward
+        return self.board, reward, done
 
     def _get_vers(self) -> List[List[int]]:
         """
