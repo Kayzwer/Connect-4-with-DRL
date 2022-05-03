@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import numpy as np
 
 
@@ -56,7 +56,7 @@ class Connect4:
         self.__init__()
         return self.board
 
-    def step(self, action: int, item: int) -> None:
+    def step(self, action: int, item: int) -> Tuple[np.ndarray, float]:
         """
         Insert item into given column index
 
