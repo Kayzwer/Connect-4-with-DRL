@@ -79,6 +79,14 @@ class Connect4:
         self.board[row][action] = item
         self._col_ptr[action] -= 1
 
+        reward = 0
+        result = self.check_win()
+        if result == 1:
+            reward += 1
+        elif result == 2:
+            reward -= 1
+        return self.board, reward
+
     def _get_vers(self) -> List[List[int]]:
         """
         Returns
@@ -137,21 +145,3 @@ class Connect4:
             if diag in pattern:
                 player = pattern.index(diag) + 1
         return player
-
-    def play(self) -> None:
-        """
-        Run the game.
-        """
-        i = 0
-        while True:
-            print(self)
-            col = int(input("Column: "))
-            self.step(col, 1 if i % 2 == 0 else -1)
-
-            winner = self.check_win()
-            if winner in (1, 2):
-                print(self)
-                print(f"Player {winner} win the game")
-                break
-            else:
-                i += 1
