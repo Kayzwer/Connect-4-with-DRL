@@ -30,8 +30,6 @@ class Connect4:
         Return all possible diagonal result
     check_win()
         Return winner if there is else 0
-    play()
-        Run the game
     """
 
     def __init__(self) -> None:
