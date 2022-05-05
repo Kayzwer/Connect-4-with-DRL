@@ -1,5 +1,6 @@
 from typing import List, Tuple
 import numpy as np
+import os
 
 
 class Connect4:
@@ -32,6 +33,8 @@ class Connect4:
         Return all possible diagonal result
     check_win()
         Return winner if there is else 0
+    play()
+        Play the game
     """
 
     def __init__(self) -> None:
@@ -158,3 +161,27 @@ class Connect4:
             if diag in pattern:
                 player = pattern.index(diag) + 1
         return player
+
+    def play(self) -> None:
+        """
+        Play the game
+        """
+        i = 0
+        while True:
+            os.system("clear")
+            print(self)
+            col = int(input("Column: "))
+            self.step(col, 1 if i % 2 == 0 else -1)
+            result = self.check_win()
+            if result == 1:
+                os.system("clear")
+                print(self)
+                print("Player 1 win")
+                break
+            elif result == 2:
+                os.system("clear")
+                print(self)
+                print("Player 2 win")
+                break
+            else:
+                i += 1
