@@ -21,7 +21,7 @@ class Connect4:
     Methods
     -------
     step(action, item)
-        Insert item into a column based on action
+        Insert item into a column based on action and return information of the game
     reset()
         Reset the game to initial state and return state of the game
     _get_vers()
@@ -55,10 +55,10 @@ class Connect4:
 
         Returns
         -------
-            a flatten array which represent the state of the board
+            a 2d array which represent the state of the board
         """
         self.__init__()
-        return self.board.flatten()
+        return self.board
 
     def step(self, action: int, item: int) -> Tuple[np.ndarray, float, bool]:
         """
@@ -78,7 +78,7 @@ class Connect4:
 
         Returns
         -------
-            a flatten array which represents the state of the board, 
+            a 2d array which represents the state of the board, 
             a reward in flaot type and, 
             a boolean that represents termination
         """
@@ -98,7 +98,7 @@ class Connect4:
         elif result == 2:
             done = True
             reward -= 1
-        return self.board.flatten(), reward, done
+        return self.board, reward, done
 
     def _get_vers(self) -> List[List[int]]:
         """
