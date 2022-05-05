@@ -31,10 +31,14 @@ class Connect4:
         Return all possible horizontal result
     _get_diags()
         Return all possible diagonal result
+    _check_valid(col)
+        Return a validity of a move
     check_win()
         Return winner if there is else 0
     play()
         Play the game
+    play_vs_random()
+        Play the game against random
     """
 
     def __init__(self) -> None:
@@ -42,11 +46,12 @@ class Connect4:
         Create a 7 x 6 board for the regular connect four game.
         Create a list to keep track of the empty slot of each column.
         """
-        self.state_dim = (6, 7)
+        self.state_tuple = (6, 7)
+        self.state_dim = 42
         self.action_space = np.arange(7)
         self.action_dim = len(self.action_space)
         
-        self.board = np.full(self.state_dim, 0)
+        self.board = np.full(self.state_tuple, 0)
         self._col_ptr = np.full(self.action_dim, 5)
 
     def __str__(self) -> str:
@@ -142,6 +147,15 @@ class Connect4:
                 diags.append([self.board[x + j][6 - x - i] for x in range(4)])
         return diags
 
+    def _check_valid(self, col: int) -> bool:
+        """
+        Returns
+        -------
+        bool
+            a bool to indicate a selected column is valid.
+        """
+        return self._col_ptr[col] > -1
+
     def check_win(self) -> int:
         """
         Returns
@@ -185,3 +199,29 @@ class Connect4:
                 break
             else:
                 i += 1
+
+    def play_vs_random(self) -> None:
+        """
+        Play against 
+        """
+        while True:
+            os.system("clear")
+            print(self)
+            player_col = int(input("Column: "))
+            self.step(player_col, 1)
+            if self.check_win() == 1:
+                os.system("clear")
+                print(self)
+                print("Player 1 win")
+                break
+
+            while True:
+                random_col = np.random.choice(7)
+                if self._check_valid(random_col):
+                    break
+            self.step(random_col, -1)
+            if self.check_win() == 2:
+                os.system("clear")
+                print(self)
+                print("Player 2 win")
+                break
