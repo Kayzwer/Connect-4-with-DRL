@@ -207,7 +207,8 @@ if __name__ == "__main__":
         score = 0
         loss = 0
         while not done:
-            
+            action = agent.choose_action_train(state, env)
+            next_state, reward, done = env.step(action)
             agent.replay_buffer.store(state, action, reward, next_state)
             score += reward
             state = next_state
