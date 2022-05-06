@@ -1,5 +1,5 @@
 from typing import Dict
-from Connect4 import Connect4
+from Connect4_random_env import Connect4
 import pickle
 import torch
 import torch.nn as nn
