@@ -189,32 +189,47 @@ class Agent:
             self.update_target_network()
         self.epsilon_controller.decay()
         return loss
+    
+    def test(self, n_game: int, env: Connect4) -> None:
+        for i in range(n_game):
+            state = env.reset()
+            done = False
+            score = 0
+            while not done:
+                action = self.choose_action_test(state, env)
+                state, reward, done = env.step(action)
+                print(env)
+                score += reward
+            print(f"Game: {i + 1}, Score: {score}")
 
 
 if __name__ == "__main__":
     env = Connect4()
-    agent = Agent(
-        env.state_dim,
-        env.action_dim, 
-        0.0001, 10000, 512,
-        1.0, "0.0001", 0.001,
-        0.99, 1024
-    )
-    iteration = 1000
-    for i in range(iteration):
-        state = env.reset()
-        done = False
-        score = 0
-        loss = 0
-        while not done:
-            action = agent.choose_action_train(state, env)
-            next_state, reward, done = env.step(action)
-            agent.replay_buffer.store(state, action, reward, next_state)
-            score += reward
-            state = next_state
-            if agent.replay_buffer.is_ready():
-                loss = agent.train()
-        print(f"Iteration: {i + 1}, Epsilon: {agent.epsilon_controller.eps}, Loss: {loss}, Last Game Reward: {score}")
+    # agent = Agent(
+    #     env.state_dim,
+    #     env.action_dim, 
+    #     0.0001, 10000, 512,
+    #     1.0, "0.0001", 0.001,
+    #     0.99, 1024
+    # )
+    # iteration = 1000
+    # for i in range(iteration):
+    #     state = env.reset()
+    #     done = False
+    #     score = 0
+    #     loss = 0
+    #     while not done:
+    #         action = agent.choose_action_train(state, env)
+    #         next_state, reward, done = env.step(action)
+    #         agent.replay_buffer.store(state, action, reward, next_state)
+    #         score += reward
+    #         state = next_state
+    #         if agent.replay_buffer.is_ready():
+    #             loss = agent.train()
+    #     print(f"Iteration: {i + 1}, Epsilon: {agent.epsilon_controller.eps}, Loss: {loss}, Last Game Reward: {score}")
     
-    with open("Connect 4 agent.pickle", "wb") as f:
-        pickle.dump(agent, f)
+    # with open("Connect 4 agent.pickle", "wb") as f:
+    #     pickle.dump(agent, f)
+    with open("Connect 4 agent.pickle", "rb") as f:
+        agent = pickle.load(f)
+    agent.test(3, env)
