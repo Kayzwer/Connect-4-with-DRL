@@ -63,10 +63,10 @@ class Connect4:
 
         Returns
         -------
-            a 2d array which represent the state of the board
+            a flatten 2d array which represent the state of the board
         """
         self.__init__()
-        return self.board
+        return self.board.flatten()
 
     def step(self, action: int, item: int) -> Tuple[np.ndarray, float, bool]:
         """
@@ -86,7 +86,7 @@ class Connect4:
 
         Returns
         -------
-            a 2d array which represents the state of the board, 
+            a flatten 2d array which represents the state of the board, 
             a reward in flaot type and, 
             a boolean that represents termination
         """
@@ -106,7 +106,7 @@ class Connect4:
         elif result == 2:
             done = True
             reward -= 1
-        return self.board, reward, done
+        return self.board.flatten(), reward, done
 
     def _get_vers(self) -> List[List[int]]:
         """
