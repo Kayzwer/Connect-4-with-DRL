@@ -29,7 +29,7 @@ class Network(nn.Module):
         self.loss = nn.SmoothL1Loss()
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.layers.forward(x)
+        return self.layers.forward(x.float())
 
 
 class Epsilon_Controller:
@@ -123,6 +123,7 @@ class Agent:
         self.target_network = Network(input_dim, output_dim, learning_rate)
         self.replay_buffer = Replay_Buffer(buffer_size, batch_size, input_dim)
         self.epsilon_controller = Epsilon_Controller(init_eps, eps_dec_rate, min_eps)
+        self.output_dim = output_dim
         self.gamma = gamma
         self.c, self.update_count = c, 0
         self.update_target_network()
@@ -130,6 +131,24 @@ class Agent:
     def update_target_network(self) -> None:
         self.target_network.load_state_dict(self.network.state_dict())
 
+    def choose_action_train(self, state: torch.Tensor) -> int:
+        if np.random.random() < self.epsilon_controller.eps:
+            return np.random.choice(self.output_dim)
+        else:
+            return self.network.forward(torch.tensor(state)).argmax().item()
+
+    def choose_action_test(self, state: torch.Tensor) -> int:
+        return self.network.forward(torch.tensor(state)).argmax().item()
+
+    def _compute_loss(self) -> torch.Tensor:
+        pass
+
 
 if __name__ == "__main__":
     env = Connect4()
+    network = Network(env.state_dim, env.action_dim, 0.001)
+
+    state = env.reset()
+    result = network.forward(torch.tensor(state))
+    print(result)
+    print(result.argmax())
