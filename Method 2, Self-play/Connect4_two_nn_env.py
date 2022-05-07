@@ -64,14 +64,14 @@ class Connect4:
         player = 0
         for ver in self._get_vers():
             if ver in pattern:
-                player = pattern.index(ver) + 1
+                player = pattern.index(ver)
         for hor in self._get_hors():
             if hor in pattern:
-                player = pattern.index(hor) + 1
+                player = pattern.index(hor)
         for diag in self._get_diags():
             if diag in pattern:
-                player = pattern.index(diag) + 1
-        return player
+                player = pattern.index(diag)
+        return player + 1
     
     def is_draw(self) -> bool:
         for ptr in self._col_ptr:
