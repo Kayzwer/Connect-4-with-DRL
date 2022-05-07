@@ -102,6 +102,7 @@ if __name__ == "__main__":
         col_2 = int(input("Player 2, Column: "))
         env.step(col_2, -1)
 
+        result = env.check_win()
         if result == -1:
             print("Draw!!!")
             break
