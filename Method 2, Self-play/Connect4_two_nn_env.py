@@ -1,3 +1,4 @@
+import os
 from typing import List, Tuple
 import numpy as np
 
@@ -64,17 +65,46 @@ class Connect4:
         player = 0
         for ver in self._get_vers():
             if ver in pattern:
-                player = pattern.index(ver)
+                player = pattern.index(ver) + 1
         for hor in self._get_hors():
             if hor in pattern:
-                player = pattern.index(hor)
+                player = pattern.index(hor) + 1
         for diag in self._get_diags():
             if diag in pattern:
-                player = pattern.index(diag)
-        return player + 1
+                player = pattern.index(diag) + 1
+        return player
     
     def is_draw(self) -> bool:
         for ptr in self._col_ptr:
             if ptr != -1:
                 return False
         return True
+
+
+if __name__ == "__main__":
+    env = Connect4()
+    while True:
+        os.system("clear")
+        print(env)
+        col_1 = int(input("Player 1, Column: "))
+        env.step(col_1, 1)
+
+        result = env.check_win()
+        if result == -1:
+            print("Draw!!!")
+            break
+        elif result == 1:
+            print("Player 1 win!!!")
+            break
+
+        os.system("clear")
+        print(env)
+        col_2 = int(input("Player 2, Column: "))
+        env.step(col_2, -1)
+
+        if result == -1:
+            print("Draw!!!")
+            break
+        elif result == 2:
+            print("Player 2 win!!!")
+            break
