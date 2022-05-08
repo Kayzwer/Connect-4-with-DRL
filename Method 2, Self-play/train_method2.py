@@ -306,3 +306,9 @@ if __name__ == "__main__":
         
         if (i + 1) % 5 == 0:
             print(f"Iteration: {i + 1}, Total Loss: {loss}")
+
+    with open("Dueling DDQN Connect 4 Agent1.pickle") as f:
+        pickle.dump(agent1, f)
+    
+    with open("Dueling DDQN Connect 4 Agent2.pickle") as f:
+        pickle.dump(agent2, f)
