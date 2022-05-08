@@ -70,7 +70,7 @@ class Connect4:
                 return pattern.index(diag) + 1
         return 0
 
-    def place_token(self, action: int, token: int) -> None:
+    def step(self, action: int, token: int) -> Tuple[np.ndarray, float, float, bool]:
         assert 0 <= action <= 6
         row = self._col_ptr[action]
         if row == -1:
@@ -78,7 +78,6 @@ class Connect4:
         self.board[row][action] = token
         self._col_ptr[action] -= 1
 
-    def check_states(self) -> Tuple[np.ndarray, float, float, bool]:
         board = self.board.flatten()
         result = self._check_win()
         if result == 0:

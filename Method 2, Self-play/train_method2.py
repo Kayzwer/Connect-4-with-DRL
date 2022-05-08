@@ -1,5 +1,4 @@
 from typing import Dict
-from unittest import result
 from Connect4_two_nn_env import Connect4
 import pickle
 import torch
@@ -209,14 +208,101 @@ if __name__ == "__main__":
     agent1 = Agent(
         env.state_dim,
         env.action_dim, 
-        0.0001, 10000, 512,
+        0.0001, 20, 512,
         1.0, "0.0001", 0.001,
         0.99, 1024
     )
     agent2 = Agent(
         env.state_dim,
         env.action_dim, 
-        0.0001, 10000, 512,
+        0.0001, 20, 512,
         1.0, "0.0001", 0.001,
         0.99, 1024
     )
+    iteration = 1000
+    for i in range(iteration):
+        state = env.reset()
+        loss = 0
+        winner = 0
+        done = False
+        after_first = False
+        agent1_transition = []
+        agent2_transition = []
+
+        if i % 2 == 0:
+            while not done:
+                action1 = agent1.choose_action_train(state, env)
+                agent1_transition += [state, action1]
+                state, reward_1, reward_2, done = env.step(action1, 1)
+                if done:
+                    agent1_transition += [reward_1, state]
+                    agent1.replay_buffer.store(*agent1_transition)
+                    agent1_transition.clear()
+                    agent2_transition += [reward_2, state]
+                    agent2.replay_buffer.store(*agent2_transition)
+                    agent2_transition.clear()
+                    break
+                if after_first:
+                    agent2_transition += [reward_2, state]
+                    agent2.replay_buffer.store(*agent2_transition)
+                    agent2_transition.clear()
+            
+                action2 = agent2.choose_action_train(state, env)
+                agent2_transition += [state, action2]
+                state, reward_1, reward_2, done = env.step(action2, -1)
+                if done:
+                    agent1_transition += [reward_1, state]
+                    agent1.replay_buffer.store(*agent1_transition)
+                    agent1_transition.clear()
+                    agent2_transition += [reward_2, state]
+                    agent2.replay_buffer.store(*agent2_transition)
+                    agent2_transition.clear()
+                    break
+                agent1_transition += [reward_1, state]
+                agent1.replay_buffer.store(*agent1_transition)
+                agent1_transition.clear()
+                after_first = True
+
+                if agent1.replay_buffer.is_ready() and agent2.replay_buffer.is_ready():
+                    loss += agent1.train()
+                    loss += agent2.train()
+        else:
+            while not done:
+                action2 = agent2.choose_action_train(state, env)
+                agent2_transition += [state, action2]
+                state, reward_1, reward_2, done = env.step(action2, -1)
+                if done:
+                    agent2_transition += [reward_2, state]
+                    agent2.replay_buffer.store(*agent2_transition)
+                    agent2_transition.clear()
+                    agent1_transition += [reward_1, state]
+                    agent1.replay_buffer.store(*agent1_transition)
+                    agent1_transition.clear()
+                    break
+                if after_first:
+                    agent1_transition += [reward_1, state]
+                    agent1.replay_buffer.store(*agent1_transition)
+                    agent1_transition.clear()
+            
+                action1 = agent1.choose_action_train(state, env)
+                agent1_transition += [state, action1]
+                state, reward_1, reward_2, done = env.step(action1, 1)
+                if done:
+                    agent2_transition += [reward_2, state]
+                    agent2.replay_buffer.store(*agent2_transition)
+                    agent2_transition.clear()
+                    agent1_transition += [reward_1, state]
+                    agent1.replay_buffer.store(*agent1_transition)
+                    agent1_transition.clear()
+                    break
+                agent2_transition += [reward_2, state]
+                agent2.replay_buffer.store(*agent2_transition)
+                agent2_transition.clear()
+                after_first = True
+
+                if agent1.replay_buffer.is_ready() and agent2.replay_buffer.is_ready():
+                    loss += agent1.train()
+                    loss += agent2.train()
+        
+        if (i + 1) % 5 == 0:
+            print(f"Iteration: {i + 1}, Total Loss: {loss}")
