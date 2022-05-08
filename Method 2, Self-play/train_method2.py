@@ -223,7 +223,7 @@ if __name__ == "__main__":
     for i in range(iteration):
         state = env.reset()
         loss = 0
-        winner = 0
+        winner = ""
         done = False
         after_first = False
         agent1_transition = []
@@ -278,6 +278,10 @@ if __name__ == "__main__":
                     agent1_transition += [reward_1, state]
                     agent1.replay_buffer.store(*agent1_transition)
                     agent1_transition.clear()
+                    if reward_1 == 0.0:
+                        winner = "Draw"
+                    elif reward_1 == 1.0:
+                        winner = "Player 1"
                     break
                 if after_first:
                     agent1_transition += [reward_1, state]
@@ -294,6 +298,10 @@ if __name__ == "__main__":
                     agent1_transition += [reward_1, state]
                     agent1.replay_buffer.store(*agent1_transition)
                     agent1_transition.clear()
+                    if reward_2 == 0.0:
+                        winner = "Draw"
+                    elif reward_2 == 1.0:
+                        winner = "Player 2"
                     break
                 agent2_transition += [reward_2, state]
                 agent2.replay_buffer.store(*agent2_transition)
@@ -305,7 +313,7 @@ if __name__ == "__main__":
                     loss += agent2.train()
         
         if (i + 1) % 5 == 0:
-            print(f"Iteration: {i + 1}, Total Loss: {loss}")
+            print(f"Iteration: {i + 1}, Winner: {winner} ,Total Loss: {loss}")
 
     with open("Dueling DDQN Connect 4 Agent1.pickle") as f:
         pickle.dump(agent1, f)
