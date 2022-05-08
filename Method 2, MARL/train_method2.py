@@ -321,7 +321,7 @@ if __name__ == "__main__":
                     loss += agent2.train()
         
         if (i + 1) % 5 == 0:
-            print(f"Iteration: {i + 1}, Winner: {winner} ,Total Loss: {loss}")
+            print(f"Iteration: {i + 1}, Winner: {winner}, Total Loss: {loss}")
 
     with open("Dueling DDQN Connect 4 Agent1.pickle", "wb") as f:
         pickle.dump(agent1, f)
