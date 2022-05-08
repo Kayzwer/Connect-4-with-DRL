@@ -261,10 +261,10 @@ if __name__ == "__main__":
                     agent2_transition += [reward_2, state]
                     agent2.replay_buffer.store(*agent2_transition)
                     agent2_transition.clear()
-                    if reward_1 == 0.0:
+                    if reward_2 == 0.0:
                         winner = "Draw"
-                    elif reward_1 == 1.0:
-                        winner = "Player 1"
+                    elif reward_2 == 1.0:
+                        winner = "Player 2"
                     break
                 agent1_transition += [reward_1, state]
                 agent1.replay_buffer.store(*agent1_transition)
