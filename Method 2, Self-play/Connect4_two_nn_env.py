@@ -1,4 +1,3 @@
-import os
 from typing import List, Tuple
 import numpy as np
 
@@ -49,3 +48,44 @@ class Connect4:
 
     def _check_valid(self, col: int) -> bool:
         return self._col_ptr[col] > -1
+
+    def _check_win(self) -> int:
+        draw = True
+        for ptr in self._col_ptr:
+            if ptr != -1:
+                draw = False
+                break
+        if draw:
+            return -1
+        
+        pattern = [[1, 1, 1, 1], [-1, -1, -1, -1]]
+        for ver in self._get_vers():
+            if ver in pattern:
+                return pattern.index(ver) + 1
+        for hor in self._get_hors():
+            if hor in pattern:
+                return pattern.index(hor) + 1
+        for diag in self._get_diags():
+            if diag in pattern:
+                return pattern.index(diag) + 1
+        return 0
+
+    def place_token(self, action: int, token: int) -> None:
+        assert 0 <= action <= 6
+        row = self._col_ptr[action]
+        if row == -1:
+            raise Exception("Column is fulled")
+        self.board[row][action] = token
+        self._col_ptr[action] -= 1
+
+    def check_states(self, player: int) -> Tuple[np.ndarray, float, bool]:
+        board = self.board.flatten()
+        result = self._check_win()
+        if result == 0:
+            return board, 0.0, False
+        elif result == 1:
+            return board, 1.0 if player == 1 else -1.0, True
+        elif result == 2:
+            return board, 1.0 if player == 2 else -1.0, True
+        elif result == -1:
+            return board, 0.0, True
