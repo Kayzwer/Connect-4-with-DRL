@@ -78,14 +78,14 @@ class Connect4:
         self.board[row][action] = token
         self._col_ptr[action] -= 1
 
-    def check_states(self, player: int) -> Tuple[np.ndarray, float, bool]:
+    def check_states(self) -> Tuple[np.ndarray, float, float, bool]:
         board = self.board.flatten()
         result = self._check_win()
         if result == 0:
-            return board, 0.0, False
+            return board, 0.0, 0.0, False
         elif result == 1:
-            return board, 1.0 if player == 1 else -1.0, True
+            return board, 1.0, -1.0, True
         elif result == 2:
-            return board, 1.0 if player == 2 else -1.0, True
+            return board, -1.0, 1.0, True
         elif result == -1:
-            return board, 0.0, True
+            return board, 0.0, 0.0, True
