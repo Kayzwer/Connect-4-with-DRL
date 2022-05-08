@@ -1,5 +1,5 @@
-from typing import Dict
 from Connect4_two_nn_env import Connect4
+from typing import Dict
 import pickle
 import torch
 import torch.nn as nn
@@ -208,14 +208,14 @@ if __name__ == "__main__":
     agent1 = Agent(
         env.state_dim,
         env.action_dim, 
-        0.0001, 20, 512,
+        0.0001, 10000, 512,
         1.0, "0.0001", 0.001,
         0.99, 1024
     )
     agent2 = Agent(
         env.state_dim,
         env.action_dim, 
-        0.0001, 20, 512,
+        0.0001, 10000, 512,
         1.0, "0.0001", 0.001,
         0.99, 1024
     )
@@ -241,6 +241,10 @@ if __name__ == "__main__":
                     agent2_transition += [reward_2, state]
                     agent2.replay_buffer.store(*agent2_transition)
                     agent2_transition.clear()
+                    if reward_1 == 0.0:
+                        winner = "Draw"
+                    elif reward_1 == 1.0:
+                        winner = "Player 1"
                     break
                 if after_first:
                     agent2_transition += [reward_2, state]
@@ -257,6 +261,10 @@ if __name__ == "__main__":
                     agent2_transition += [reward_2, state]
                     agent2.replay_buffer.store(*agent2_transition)
                     agent2_transition.clear()
+                    if reward_1 == 0.0:
+                        winner = "Draw"
+                    elif reward_1 == 1.0:
+                        winner = "Player 1"
                     break
                 agent1_transition += [reward_1, state]
                 agent1.replay_buffer.store(*agent1_transition)
@@ -278,10 +286,10 @@ if __name__ == "__main__":
                     agent1_transition += [reward_1, state]
                     agent1.replay_buffer.store(*agent1_transition)
                     agent1_transition.clear()
-                    if reward_1 == 0.0:
+                    if reward_2 == 0.0:
                         winner = "Draw"
-                    elif reward_1 == 1.0:
-                        winner = "Player 1"
+                    elif reward_2 == 1.0:
+                        winner = "Player 2"
                     break
                 if after_first:
                     agent1_transition += [reward_1, state]
@@ -298,10 +306,10 @@ if __name__ == "__main__":
                     agent1_transition += [reward_1, state]
                     agent1.replay_buffer.store(*agent1_transition)
                     agent1_transition.clear()
-                    if reward_2 == 0.0:
+                    if reward_1 == 0.0:
                         winner = "Draw"
-                    elif reward_2 == 1.0:
-                        winner = "Player 2"
+                    elif reward_1 == 1.0:
+                        winner = "Player 1"
                     break
                 agent2_transition += [reward_2, state]
                 agent2.replay_buffer.store(*agent2_transition)
@@ -315,8 +323,8 @@ if __name__ == "__main__":
         if (i + 1) % 5 == 0:
             print(f"Iteration: {i + 1}, Winner: {winner} ,Total Loss: {loss}")
 
-    with open("Dueling DDQN Connect 4 Agent1.pickle") as f:
+    with open("Dueling DDQN Connect 4 Agent1.pickle", "wb") as f:
         pickle.dump(agent1, f)
     
-    with open("Dueling DDQN Connect 4 Agent2.pickle") as f:
+    with open("Dueling DDQN Connect 4 Agent2.pickle", "wb") as f:
         pickle.dump(agent2, f)
