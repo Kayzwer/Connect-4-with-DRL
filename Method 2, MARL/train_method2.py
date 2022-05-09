@@ -180,8 +180,8 @@ class Agent:
 
         q_pred = self.network.forward(states)[batch_index, actions]
         q_next_argmax_action = self.network.forward(next_states).argmax(dim = 1)
-        q_next = rewards + self.gamma * self.target_network.forward(next_states)[batch_index, q_next_argmax_action]
-        loss = self.network.loss(q_pred, q_next)
+        q_target = rewards + self.gamma * self.target_network.forward(next_states)[batch_index, q_next_argmax_action]
+        loss = self.network.loss(q_pred, q_target)
         loss.backward()
         self.network.optimizer.step()
         self.update_count += 1
@@ -208,16 +208,16 @@ if __name__ == "__main__":
     agent1 = Agent(
         env.state_dim,
         env.action_dim, 
-        0.0001, 10000, 512,
-        1.0, "0.0001", 0.001,
-        0.99, 1024
+        0.001, 20000, 512,
+        1.0, "0.00001", 0.5,
+        0.999, 2048
     )
     agent2 = Agent(
         env.state_dim,
         env.action_dim, 
-        0.0001, 10000, 512,
-        1.0, "0.0001", 0.001,
-        0.99, 1024
+        0.001, 20000, 512,
+        1.0, "0.00001", 0.5,
+        0.999, 2048
     )
     iteration = 1000
     for i in range(iteration):
