@@ -16,26 +16,22 @@ class Network(nn.Module):
     ) -> None:
         super(Network, self).__init__()
         self.feature_layer = nn.Sequential(
-            nn.Linear(input_dim, 128),
-            nn.Mish()
+            nn.Linear(input_dim, 64),
+            nn.ReLU()
         )
         self.advantage_layer = nn.Sequential(
-            nn.Linear(128, 256),
-            nn.Mish(),
-            nn.Linear(256, 256),
-            nn.Mish(),
-            nn.Linear(256, 256),
-            nn.Mish(),
-            nn.Linear(256, output_dim)
+            nn.Linear(64, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Linear(128, output_dim)
         )
         self.value_layer = nn.Sequential(
-            nn.Linear(128, 256),
-            nn.Mish(),
-            nn.Linear(256, 128),
-            nn.Mish(),
-            nn.Linear(128, 64),
-            nn.Mish(),
-            nn.Linear(64, 1)
+            nn.Linear(64, 64),
+            nn.ReLU(),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 1)
         )
         self.optimizer = optim.RMSprop(self.parameters(), learning_rate)
         self.loss = nn.SmoothL1Loss()
@@ -208,14 +204,14 @@ if __name__ == "__main__":
     agent1 = Agent(
         env.state_dim,
         env.action_dim, 
-        0.001, 20000, 512,
+        0.00001, 20000, 512,
         1.0, "0.00001", 0.5,
         0.999, 2048
     )
     agent2 = Agent(
         env.state_dim,
         env.action_dim, 
-        0.001, 20000, 512,
+        0.00001, 20000, 512,
         1.0, "0.00001", 0.5,
         0.999, 2048
     )
