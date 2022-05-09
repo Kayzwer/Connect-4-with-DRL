@@ -177,7 +177,7 @@ class Agent:
         next_states = batch.get("next_states")
         batch_index = range(self.replay_buffer.batch_size)
 
-
+        self.network.zero_grad()
         q_pred = self.network.forward(states)[batch_index, actions]
         q_next_argmax_action = self.network.forward(next_states).argmax(dim = 1)
         q_next = rewards + self.gamma * self.target_network.forward(next_states)[batch_index, q_next_argmax_action]
