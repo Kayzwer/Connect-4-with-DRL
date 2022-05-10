@@ -3,44 +3,25 @@ from typing import Dict
 import pickle
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 
 
 class Network(nn.Module):
-    def __init__(
-        self,
-        input_dim: int,
-        output_dim: int,
-        learning_rate: float
-    ) -> None:
+    def __init__(self, output_dim: int,learning_rate: float) -> None:
         super(Network, self).__init__()
-        self.feature_layer = nn.Sequential(
-            nn.Linear(input_dim, 64),
-            nn.ReLU()
-        )
-        self.advantage_layer = nn.Sequential(
-            nn.Linear(64, 128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.ReLU(),
-            nn.Linear(128, output_dim)
-        )
-        self.value_layer = nn.Sequential(
-            nn.Linear(64, 64),
-            nn.ReLU(),
-            nn.Linear(64, 32),
-            nn.ReLU(),
-            nn.Linear(32, 1)
-        )
-        self.optimizer = optim.RMSprop(self.parameters(), learning_rate)
+        self.conv = nn.Conv2d(1, 10, 4)
+        self.fc1 = nn.Linear(120, 64)
+        self.fc2 = nn.Linear(64, output_dim)
+        self.optimizer = optim.RMSprop(self.parameters(), lr = learning_rate)
         self.loss = nn.SmoothL1Loss()
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        feature = self.feature_layer.forward(x.float())
-        advantage = self.advantage_layer(feature)
-        value = self.value_layer(feature)
-        return value + advantage - advantage.mean(dim = -1, keepdim = True)
+        temp = torch.empty((len(x), 7), dtype = torch.float32)
+        for i, state in enumerate(x):
+            temp[i] = self.fc2(F.relu(self.fc1(F.relu(self.conv(state.unsqueeze(0))).flatten())))
+        return temp
 
 
 class Epsilon_Controller:
@@ -74,16 +55,16 @@ class Replay_Buffer:
         self,
         buffer_size: int,
         batch_size: int,
-        input_dim: int
+        input_dim: tuple
     ) -> None:
         self.ptr = 0
         self.cur_size = 0
         self.buffer_size = buffer_size
         self.batch_size = batch_size
-        self.state_memory = np.zeros((buffer_size, input_dim), dtype = np.float32)
+        self.state_memory = np.zeros((buffer_size, *input_dim), dtype = np.float32)
         self.action_memory = np.zeros(buffer_size, dtype = np.int8)
         self.reward_memory = np.zeros(buffer_size, dtype = np.float32)
-        self.next_state_memory = np.zeros((buffer_size, input_dim), dtype = np.float32)
+        self.next_state_memory = np.zeros((buffer_size, *input_dim), dtype = np.float32)
 
     def store(
         self,
@@ -119,7 +100,7 @@ class Replay_Buffer:
 class Agent:
     def __init__(
         self,
-        input_dim: int,
+        input_dim: tuple,
         output_dim: int,
         learning_rate: float,
         buffer_size: int,
@@ -130,8 +111,8 @@ class Agent:
         gamma: float,
         c: int
     ) -> None:
-        self.network = Network(input_dim, output_dim, learning_rate)
-        self.target_network = Network(input_dim, output_dim, learning_rate)
+        self.network = Network(output_dim, learning_rate)
+        self.target_network = Network(output_dim, learning_rate)
         self.replay_buffer = Replay_Buffer(buffer_size, batch_size, input_dim)
         self.epsilon_controller = Epsilon_Controller(init_eps, eps_dec_rate, min_eps)
         self.output_dim = output_dim
@@ -202,18 +183,18 @@ class Agent:
 if __name__ == "__main__":
     env = Connect4()
     agent1 = Agent(
-        env.state_dim,
+        env.state_shape,
         env.action_dim, 
-        0.00001, 20000, 512,
-        1.0, "0.00001", 0.5,
-        0.999, 2048
+        0.0001, 20000, 512,
+        1.0, "0.00001", 0.001,
+        0.99, 2048
     )
     agent2 = Agent(
-        env.state_dim,
+        env.state_shape,
         env.action_dim, 
-        0.00001, 20000, 512,
-        1.0, "0.00001", 0.5,
-        0.999, 2048
+        0.0001, 20000, 512,
+        1.0, "0.00001", 0.001,
+        0.99, 2048
     )
     iteration = 1000
     for i in range(iteration):
@@ -319,8 +300,8 @@ if __name__ == "__main__":
         if (i + 1) % 5 == 0:
             print(f"Iteration: {i + 1}, Winner: {winner}, Total Loss: {loss}")
 
-    with open("Dueling DDQN Connect 4 Agent1.pickle", "wb") as f:
+    with open("CNN DDQN Connect 4 Agent1.pickle", "wb") as f:
         pickle.dump(agent1, f)
     
-    with open("Dueling DDQN Connect 4 Agent2.pickle", "wb") as f:
+    with open("CNN DDQN Connect 4 Agent2.pickle", "wb") as f:
         pickle.dump(agent2, f)

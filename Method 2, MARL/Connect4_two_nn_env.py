@@ -4,12 +4,12 @@ import numpy as np
 
 class Connect4:
     def __init__(self) -> None:
-        self.state_tuple = (6, 7)
+        self.state_shape = (6, 7)
         self.state_dim = 42
         self.action_space = np.arange(7)
         self.action_dim = len(self.action_space)
         
-        self.board = np.full(self.state_tuple, 0)
+        self.board = np.full(self.state_shape, 0)
         self._col_ptr = np.full(self.action_dim, 5)
 
     def __str__(self) -> str:
@@ -17,7 +17,7 @@ class Connect4:
     
     def reset(self) -> np.ndarray:
         self.__init__()
-        return self.board.flatten()
+        return self.board
 
     def _get_random_valid_col(self) -> int:
         while True:
@@ -78,7 +78,7 @@ class Connect4:
         self.board[row][action] = token
         self._col_ptr[action] -= 1
 
-        board = self.board.flatten()
+        board = self.board
         result = self._check_win()
         if result == 0:
             return board, 0.0, 0.0, False
