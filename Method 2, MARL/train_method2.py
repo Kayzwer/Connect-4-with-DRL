@@ -3,25 +3,26 @@ from typing import Dict
 import pickle
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 
 
 class Network(nn.Module):
-    def __init__(self, output_dim: int,learning_rate: float) -> None:
+    def __init__(self, output_dim: int, learning_rate: float) -> None:
         super(Network, self).__init__()
-        self.conv = nn.Conv2d(1, 10, 4)
-        self.fc1 = nn.Linear(120, 64)
-        self.fc2 = nn.Linear(64, output_dim)
-        self.optimizer = optim.RMSprop(self.parameters(), lr = learning_rate)
+        self.layers = nn.Sequential(
+            nn.Conv2d(1, 10, 4),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(120, 64),
+            nn.ReLU(),
+            nn.Linear(64, output_dim)
+        )
+        self.optimizer = optim.RMSprop(self.parameters(), learning_rate)
         self.loss = nn.SmoothL1Loss()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        temp = torch.empty((len(x), 7), dtype = torch.float32)
-        for i, state in enumerate(x):
-            temp[i] = self.fc2(F.relu(self.fc1(F.relu(self.conv(state.unsqueeze(0))).flatten())))
-        return temp
+        return self.layers(x)
 
 
 class Epsilon_Controller:
