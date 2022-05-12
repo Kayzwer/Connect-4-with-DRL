@@ -128,7 +128,7 @@ class Agent:
         if np.random.random() < self.epsilon_controller.eps:
             action = np.random.choice(self.output_dim)
         else:
-            action = self.network.forward(torch.tensor(state)).argmax().item()
+            action = self.network.forward(torch.tensor(state, dtype = torch.float32).unsqueeze(0)).argmax().item()
         if env._check_valid(action):
             return action
         else:
@@ -138,7 +138,7 @@ class Agent:
                     return action
 
     def choose_action_test(self, state: torch.Tensor, env: Connect4) -> int:
-        action = self.network.forward(torch.tensor(state)).argmax().item()
+        action = self.network.forward(torch.tensor(state, dtype = torch.float32).unsqueeze(0)).argmax().item()
         if env._check_valid(action):
             return action
         else:

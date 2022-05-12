@@ -29,21 +29,21 @@ class Connect4:
         verticals = []
         for index in range(7):
             for i in range(3):
-                verticals.append([row[index] for row in self.board][i:i + 4])
+                verticals.append([row[index] for row in self.board[0]][i:i + 4])
         return verticals
 
     def _get_hors(self) -> List[List[int]]:
         horizontals = []
         for index in range(6):
-            horizontals.extend([list(self.board[index])[i:i + 4] for i in range(4)])
+            horizontals.extend([list(self.board[0][index])[i:i + 4] for i in range(4)])
         return horizontals
 
     def _get_diags(self) -> List[List[int]]:
         diags = []
         for i in range(4):
             for j in range(3):
-                diags.append([self.board[x + j][x + i] for x in range(4)])
-                diags.append([self.board[x + j][6 - x - i] for x in range(4)])
+                diags.append([self.board[0][x + j][x + i] for x in range(4)])
+                diags.append([self.board[0][x + j][6 - x - i] for x in range(4)])
         return diags
 
     def _check_valid(self, col: int) -> bool:
@@ -75,7 +75,7 @@ class Connect4:
         row = self._col_ptr[action]
         if row == -1:
             raise Exception("Column is fulled")
-        self.board[row][action] = token
+        self.board[0][row][action] = token
         self._col_ptr[action] -= 1
 
         board = self.board.reshape(1, 6, 7)
