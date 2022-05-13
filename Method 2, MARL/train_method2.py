@@ -11,12 +11,19 @@ class Network(nn.Module):
     def __init__(self, output_dim: int, learning_rate: float) -> None:
         super(Network, self).__init__()
         self.layers = nn.Sequential(
-            nn.Conv2d(1, 10, 4),
+            nn.Conv2d(1, 64, 4),
             nn.ReLU(),
+            nn.Conv2d(64, 64, 2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, 2),
             nn.Flatten(),
-            nn.Linear(120, 64),
+            nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Linear(64, output_dim)
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 16),
+            nn.ReLU(),
+            nn.Linear(16, output_dim)
         )
         self.optimizer = optim.RMSprop(self.parameters(), learning_rate)
         self.loss = nn.SmoothL1Loss()
