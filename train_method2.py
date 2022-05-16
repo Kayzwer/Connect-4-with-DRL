@@ -1,4 +1,4 @@
-from Connect4_two_nn_env import Connect4
+from Connect4 import Connect4
 from typing import Dict
 import pickle
 import torch
