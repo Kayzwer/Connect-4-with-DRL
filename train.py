@@ -13,24 +13,23 @@ class Network(nn.Module):
         super(Network, self).__init__()
         self.feature_layers = nn.Sequential(
             nn.Conv2d(1, 64, 4),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, 2),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, 2),
+            nn.Mish(),
+            nn.Conv2d(64, 32, 2),
+            nn.Mish(),
+            nn.Conv2d(32, 16, 2),
             nn.Flatten(),
-            
         )
         self.advantage_layers = nn.Sequential(
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, output_dim)
+            nn.Linear(32, 16),
+            nn.Mish(),
+            nn.Linear(16, output_dim)
         )
         self.value_layers = nn.Sequential(
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1)
+            nn.Linear(32, 8),
+            nn.Mish(),
+            nn.Linear(8, 1)
         )
-        self.optimizer = optim.RMSprop(self.parameters(), learning_rate)
+        self.optimizer = optim.Adadelta(self.parameters(), lr = learning_rate)
         self.loss = nn.SmoothL1Loss()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -243,16 +242,16 @@ if __name__ == "__main__":
     agent1 = Agent(
         env.state_shape,
         env.action_dim, 
-        0.0001, 20000, 1024,
-        1.0, "0.00001", 0.001,
-        0.99, 12, 4096
+        0.0001, 20000, 5000,
+        0.0, "0.0001", 0.0,
+        0.99, 6, 4096
     )
     agent2 = Agent(
         env.state_shape,
         env.action_dim, 
-        0.0001, 20000, 1024,
-        1.0, "0.00001", 0.001,
-        0.99, 12, 4096
+        0.0001, 20000, 5000,
+        1.0, "0.0001", 0.001,
+        0.99, 6, 4096
     )
     iteration = 10000
     for i in range(iteration):
