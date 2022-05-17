@@ -216,7 +216,7 @@ class Agent:
         n_loss = self._compute_loss(batch, gamma)
         loss += n_loss
         
-        self.network.optimizer.zero_grad(set_to_none = True)
+        self.network.optimizer.zero_grad()
         loss.backward()
         self.network.optimizer.step()
         self.update_count += 1
@@ -243,21 +243,22 @@ if __name__ == "__main__":
     agent1 = Agent(
         env.state_shape,
         env.action_dim, 
-        0.0001, 20000, 512,
+        0.0001, 20000, 1024,
         1.0, "0.00001", 0.001,
-        0.99, 12, 2048
+        0.99, 12, 4096
     )
     agent2 = Agent(
         env.state_shape,
         env.action_dim, 
-        0.0001, 20000, 512,
+        0.0001, 20000, 1024,
         1.0, "0.00001", 0.001,
-        0.99, 12, 2048
+        0.99, 12, 4096
     )
-    iteration = 1000
+    iteration = 10000
     for i in range(iteration):
         state = env.reset()
-        loss = 0
+        loss1 = 0
+        loss2 = 0
         winner = ""
         done = False
         after_first = False
@@ -319,8 +320,8 @@ if __name__ == "__main__":
                 after_first = True
 
                 if agent1.replay_buffer.is_ready() and agent2.replay_buffer.is_ready():
-                    loss += agent1.train()
-                    loss += agent2.train()
+                    loss1 = agent1.train()
+                    loss2 = agent2.train()
         else:
             while not done:
                 action2 = agent2.choose_action_train(state, env)
@@ -378,10 +379,10 @@ if __name__ == "__main__":
                 if agent1.replay_buffer.is_ready() and agent2.replay_buffer.is_ready():
                     loss1 = agent1.train()
                     loss2 = agent2.train()
-                    loss = loss1 + loss2
         
+        print(f"Iteration: {i + 1}, Winner: {winner}, Agent1 Loss: {loss1}, Agent2 Loss: {loss2}, Epsilon: {agent1.epsilon_controller.eps}")
+
         if (i + 1) % 50 == 0:
-            print(f"Iteration: {i + 1}, Winner: {winner}, Total Loss: {loss}")
 
             with open("CNN DDQN Connect 4 Agent1.pickle", "wb") as f:
                 pickle.dump(agent1, f)
