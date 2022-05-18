@@ -31,15 +31,16 @@ class Network(nn.Module):
             nn.Linear(8, 1)
         )
         self.optimizer = optim.Adadelta(self.parameters(), lr = learning_rate)
-        self.loss = nn.SmoothL1Loss()
+        self.loss = nn.MSELoss()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         feature = self.feature_layers(x)
         advantage = self.advantage_layers(feature)
         value = self.value_layers(feature)
-        q_value = value + advantage - advantage.mean(dim = -1, keepdim = True)
-        return F.softmax(q_value)
+        return value + advantage - advantage.mean(dim = -1, keepdim = True)
 
+    def get_prob(self, x: torch.Tensor) -> torch.Tensor:
+        return F.softmax(self.forward(x), dim = -1)
 
 class Epsilon_Controller:
     def __init__(
@@ -175,15 +176,23 @@ class Agent:
     def choose_action_train(self, state: torch.Tensor, env: Connect4) -> int:
         if np.random.random() < self.epsilon_controller.eps:
             action = np.random.choice(self.output_dim)
+            if env._check_valid(action):
+                return action
+            else:
+                while True:
+                    action = np.random.choice(self.output_dim)
+                    if env._check_valid(action):
+                        return action
         else:
-            action = self.network.forward(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).argmax().item()
-        if env._check_valid(action):
-            return action
-        else:
-            while True:
-                action = np.random.choice(self.output_dim)
-                if env._check_valid(action):
-                    return action
+            probs = self.network.get_prob(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).squeeze().detach().numpy()
+            action = np.random.choice(self.output_dim, 1, False, probs)
+            if env._check_valid(action):
+                return action
+            else:
+                while True:
+                    action = np.random.choice(self.output_dim, 1, False, probs)
+                    if env._check_valid(action):
+                        return action
 
     def choose_action_test(self, state: torch.Tensor, env: Connect4) -> int:
         action = self.network.forward(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).argmax().item()
@@ -191,7 +200,8 @@ class Agent:
             return action
         else:
             while True:
-                action = np.random.choice(self.output_dim)
+                probs = self.network.get_prob(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).squeeze().detach().numpy()
+                action = np.random.choice(self.output_dim, 1, False, probs)
                 if env._check_valid(action):
                     return action
 
