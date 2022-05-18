@@ -14,23 +14,23 @@ class Network(nn.Module):
         super(Network, self).__init__()
         self.feature_layers = nn.Sequential(
             nn.Conv2d(1, 64, 4),
-            nn.Mish(),
+            nn.ReLU(),
             nn.Conv2d(64, 32, 2),
-            nn.Mish(),
+            nn.ReLU(),
             nn.Conv2d(32, 16, 2),
             nn.Flatten(),
         )
         self.advantage_layers = nn.Sequential(
             nn.Linear(32, 16),
-            nn.Mish(),
+            nn.ReLU(),
             nn.Linear(16, output_dim)
         )
         self.value_layers = nn.Sequential(
             nn.Linear(32, 8),
-            nn.Mish(),
+            nn.ReLU(),
             nn.Linear(8, 1)
         )
-        self.optimizer = optim.Adadelta(self.parameters(), lr = learning_rate)
+        self.optimizer = optim.SGD(self.parameters(), lr = learning_rate)
         self.loss = nn.MSELoss()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -158,7 +158,7 @@ class Agent:
         min_eps: float,
         gamma: float,
         n_step: int,
-        c: int
+        tau: float
     ) -> None:
         self.network = Network(output_dim, learning_rate)
         self.target_network = Network(output_dim, learning_rate)
@@ -167,12 +167,11 @@ class Agent:
         self.epsilon_controller = Epsilon_Controller(init_eps, eps_dec_rate, min_eps)
         self.output_dim = output_dim
         self.gamma = gamma
-        self.c, self.update_count = c, 0
-        self.update_target_network()
+        self.tau = tau
 
     def update_target_network(self) -> None:
-        self.target_network.load_state_dict(self.network.state_dict())
-        print("Target Network Updated")
+        for target_network_param, network_param in zip(self.target_network.parameters(), self.network.parameters()):
+            target_network_param.data.copy_(self.tau * network_param + (1 - self.tau) * target_network_param)
 
     def choose_action_train(self, state: np.ndarray, env: Connect4) -> int:
         if np.random.random() < self.epsilon_controller.eps:
@@ -221,9 +220,7 @@ class Agent:
         self.network.optimizer.zero_grad()
         loss.backward()
         self.network.optimizer.step()
-        self.update_count += 1
-        if self.update_count % self.c == 0:
-            self.update_target_network()
+        self.update_target_network()
         self.epsilon_controller.decay()
         return loss
 
