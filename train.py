@@ -4,6 +4,7 @@ from typing import Deque, Dict, Tuple
 import pickle
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 
@@ -36,7 +37,8 @@ class Network(nn.Module):
         feature = self.feature_layers(x)
         advantage = self.advantage_layers(feature)
         value = self.value_layers(feature)
-        return value + advantage - advantage.mean(dim = -1, keepdim = True)
+        q_value = value + advantage - advantage.mean(dim = -1, keepdim = True)
+        return F.softmax(q_value)
 
 
 class Epsilon_Controller:
