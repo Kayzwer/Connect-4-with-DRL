@@ -4,7 +4,6 @@ from typing import Deque, Dict, Tuple
 import pickle
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 
@@ -30,7 +29,7 @@ class Network(nn.Module):
             nn.ReLU(),
             nn.Linear(8, 1)
         )
-        self.optimizer = optim.SGD(self.parameters(), lr = learning_rate)
+        self.optimizer = optim.RMSprop(self.parameters(), lr = learning_rate)
         self.loss = nn.MSELoss()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -39,8 +38,6 @@ class Network(nn.Module):
         value = self.value_layers(feature)
         return value + advantage - advantage.mean(dim = -1, keepdim = True)
 
-    def get_prob(self, x: torch.Tensor) -> np.ndarray:
-        return F.softmax(self.forward(x), dim = -1).detach().numpy()
 
 class Epsilon_Controller:
     def __init__(
@@ -158,7 +155,7 @@ class Agent:
         min_eps: float,
         gamma: float,
         n_step: int,
-        tau: float
+        tau: int
     ) -> None:
         self.network = Network(output_dim, learning_rate)
         self.target_network = Network(output_dim, learning_rate)
@@ -168,30 +165,34 @@ class Agent:
         self.output_dim = output_dim
         self.gamma = gamma
         self.tau = tau
+        self.target_network.load_state_dict(self.network.state_dict())
 
-    def update_target_network(self) -> None:
+    def update_network(self) -> None:
         for target_network_param, network_param in zip(self.target_network.parameters(), self.network.parameters()):
             target_network_param.data.copy_(self.tau * network_param + (1 - self.tau) * target_network_param)
 
-    def choose_action_train(self, state: np.ndarray, env: Connect4) -> int:
+    def choose_action_train(self, state: torch.Tensor, env: Connect4) -> int:
         if np.random.random() < self.epsilon_controller.eps:
             action = np.random.choice(self.output_dim)
-            while not env._check_valid(action):
-                action = np.random.choice(self.output_dim)
         else:
-            probs = self.network.get_prob(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).squeeze()
-            action = np.random.choice(self.output_dim, p = probs)
-            while not env._check_valid(action):
-                action = np.random.choice(self.output_dim, p = probs)
-        return action
+            action = self.network.forward(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).argmax().item()
+        if env._check_valid(action):
+            return action
+        else:
+            while True:
+                action = np.random.choice(self.output_dim)
+                if env._check_valid(action):
+                    return action
 
-    def choose_action_test(self, state: np.ndarray, env: Connect4) -> int:
-        state = torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)
-        probs = self.network.get_prob(state).squeeze()
-        action = self.network.forward(state).argmax().item()
-        while not env._check_valid(action):
-            action = np.random.choice(self.output_dim, p = probs)
-        return action
+    def choose_action_test(self, state: torch.Tensor, env: Connect4) -> int:
+        action = self.network.forward(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).argmax().item()
+        if env._check_valid(action):
+            return action
+        else:
+            while True:
+                action = np.random.choice(self.output_dim)
+                if env._check_valid(action):
+                    return action
 
     def _compute_loss(self, batch: Dict[str, np.ndarray], gamma: float) -> torch.Tensor:
         states = batch.get("states")
@@ -201,9 +202,7 @@ class Agent:
         batch_index = np.arange(self.replay_buffer.batch_size, dtype = np.longlong)
 
         q_pred = self.network.forward(states)[batch_index, actions]
-        probs = self.network.get_prob(states)
-        q_next_state_actions = torch.tensor([np.random.choice(env.action_dim, p = prob) for prob in probs], dtype = torch.long)
-        q_next = self.target_network.forward(next_states)[batch_index, q_next_state_actions]
+        q_next = self.target_network.forward(next_states)[batch_index, self.network.forward(next_states).argmax(1)]
         q_target = rewards + gamma * q_next
         return self.network.loss(q_pred, q_target)
     
@@ -220,7 +219,7 @@ class Agent:
         self.network.optimizer.zero_grad()
         loss.backward()
         self.network.optimizer.step()
-        self.update_target_network()
+        self.update_network()
         self.epsilon_controller.decay()
         return loss
 
@@ -244,14 +243,14 @@ if __name__ == "__main__":
         env.action_dim, 
         0.0001, 20000, 1024,
         1.0, "0.0001", 0.001,
-        0.99, 6, 2048
+        0.99, 6, 0.99
     )
     agent2 = Agent(
         env.state_shape,
         env.action_dim, 
         0.0001, 20000, 1024,
         1.0, "0.0001", 0.001,
-        0.99, 6, 2048
+        0.99, 6, 0.99
     )
     iteration = 10000
     for i in range(iteration):
