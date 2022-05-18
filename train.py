@@ -172,38 +172,27 @@ class Agent:
 
     def update_target_network(self) -> None:
         self.target_network.load_state_dict(self.network.state_dict())
+        print("Target Network Updated")
 
-    def choose_action_train(self, state: torch.Tensor, env: Connect4) -> int:
+    def choose_action_train(self, state: np.ndarray, env: Connect4) -> int:
         if np.random.random() < self.epsilon_controller.eps:
             action = np.random.choice(self.output_dim)
-            if env._check_valid(action):
-                return action
-            else:
-                while True:
-                    action = np.random.choice(self.output_dim)
-                    if env._check_valid(action):
-                        return action
+            while not env._check_valid(action):
+                action = np.random.choice(self.output_dim)
         else:
-            probs = self.network.get_prob(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).squeeze().detach().numpy()
-            action = np.random.choice(self.output_dim, 1, False, probs)
-            if env._check_valid(action):
-                return action
-            else:
-                while True:
-                    action = np.random.choice(self.output_dim, 1, False, probs)
-                    if env._check_valid(action):
-                        return action
+            probs = self.network.get_prob(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).detach().numpy().squeeze()
+            action = np.random.choice(self.output_dim, p = probs)
+            while not env._check_valid(action):
+                action = np.random.choice(self.output_dim, p = probs)
+        return action
 
-    def choose_action_test(self, state: torch.Tensor, env: Connect4) -> int:
-        action = self.network.forward(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).argmax().item()
-        if env._check_valid(action):
-            return action
-        else:
-            while True:
-                probs = self.network.get_prob(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).squeeze().detach().numpy()
-                action = np.random.choice(self.output_dim, 1, False, probs)
-                if env._check_valid(action):
-                    return action
+    def choose_action_test(self, state: np.ndarray, env: Connect4) -> int:
+        state = torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)
+        probs = self.network.get_prob(state).detach().numpy().squeeze()
+        action = self.network.forward(state).argmax().item()
+        while not env._check_valid(action):
+            action = np.random.choice(self.output_dim, p = probs)
+        return action
 
     def _compute_loss(self, batch: Dict[str, np.ndarray], gamma: float) -> torch.Tensor:
         states = batch.get("states")
@@ -254,16 +243,16 @@ if __name__ == "__main__":
     agent1 = Agent(
         env.state_shape,
         env.action_dim, 
-        0.0001, 20000, 5000,
+        0.0001, 20000, 1024,
         1.0, "0.0001", 0.001,
-        0.99, 6, 4096
+        0.99, 6, 2048
     )
     agent2 = Agent(
         env.state_shape,
         env.action_dim, 
-        0.0001, 20000, 5000,
+        0.0001, 20000, 1024,
         1.0, "0.0001", 0.001,
-        0.99, 6, 4096
+        0.99, 6, 2048
     )
     iteration = 10000
     for i in range(iteration):
