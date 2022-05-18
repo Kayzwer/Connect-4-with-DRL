@@ -39,8 +39,8 @@ class Network(nn.Module):
         value = self.value_layers(feature)
         return value + advantage - advantage.mean(dim = -1, keepdim = True)
 
-    def get_prob(self, x: torch.Tensor) -> torch.Tensor:
-        return F.softmax(self.forward(x), dim = -1)
+    def get_prob(self, x: torch.Tensor) -> np.ndarray:
+        return F.softmax(self.forward(x), dim = -1).detach().numpy()
 
 class Epsilon_Controller:
     def __init__(
@@ -180,7 +180,7 @@ class Agent:
             while not env._check_valid(action):
                 action = np.random.choice(self.output_dim)
         else:
-            probs = self.network.get_prob(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).detach().numpy().squeeze()
+            probs = self.network.get_prob(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).squeeze()
             action = np.random.choice(self.output_dim, p = probs)
             while not env._check_valid(action):
                 action = np.random.choice(self.output_dim, p = probs)
@@ -188,7 +188,7 @@ class Agent:
 
     def choose_action_test(self, state: np.ndarray, env: Connect4) -> int:
         state = torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)
-        probs = self.network.get_prob(state).detach().numpy().squeeze()
+        probs = self.network.get_prob(state).squeeze()
         action = self.network.forward(state).argmax().item()
         while not env._check_valid(action):
             action = np.random.choice(self.output_dim, p = probs)
@@ -202,7 +202,9 @@ class Agent:
         batch_index = np.arange(self.replay_buffer.batch_size, dtype = np.longlong)
 
         q_pred = self.network.forward(states)[batch_index, actions]
-        q_next = self.target_network.forward(next_states)[batch_index, self.network.forward(next_states).argmax(1)]
+        probs = self.network.get_prob(states)
+        q_next_state_actions = torch.tensor([np.random.choice(env.action_dim, p = prob) for prob in probs], dtype = torch.long)
+        q_next = self.target_network.forward(next_states)[batch_index, q_next_state_actions]
         q_target = rewards + gamma * q_next
         return self.network.loss(q_pred, q_target)
     
