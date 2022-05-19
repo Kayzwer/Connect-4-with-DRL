@@ -371,10 +371,10 @@ if __name__ == "__main__":
 
         if (i + 1) % 50 == 0:
 
-            with open("CNN DDQN Connect 4 Agent1.pickle", "wb") as f:
+            with open("DDQN Connect 4 Agent1.pickle", "wb") as f:
                 pickle.dump(agent1, f)
             
-            with open("CNN DDQN Connect 4 Agent2.pickle", "wb") as f:
+            with open("DDQN Connect 4 Agent2.pickle", "wb") as f:
                 pickle.dump(agent2, f)
             
             print("Model Saved")
