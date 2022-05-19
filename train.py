@@ -4,6 +4,7 @@ from typing import Deque, Dict, Tuple
 import pickle
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 
@@ -129,6 +130,9 @@ class Replay_Buffer:
     
     def is_ready(self) -> bool:
         return self.cur_size >= self.batch_size
+    
+    def is_full(self) -> bool:
+        return self.cur_size == self.buffer_size
 
 
 class Agent:
@@ -161,10 +165,13 @@ class Agent:
             target_network_param.data.copy_(self.tau * network_param + (1 - self.tau) * target_network_param)
 
     def choose_action_train(self, state: torch.Tensor, env: Connect4) -> int:
-        if np.random.random() < self.epsilon_controller.eps:
+        if np.random.random() <= self.epsilon_controller.eps:
             action = np.random.choice(self.output_dim)
         else:
-            action = self.network.forward(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).argmax().item()
+            q_values = self.network.forward(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0))
+            q_values -= q_values.max()
+            probs = F.softmax(q_values, dim = -1).squeeze().detach().numpy()
+            action = np.random.choice(self.output_dim, p = probs)
         if env._check_valid(action):
             return action
         else:
@@ -230,16 +237,16 @@ if __name__ == "__main__":
     agent1 = Agent(
         env.state_shape,
         env.action_dim, 
-        0.0001, 10000, 1024,
-        1.0, "0.0001", 0.5,
-        0.99, 9, 0.99
+        0.0001, 100000, 1024,
+        1.0, "0.000005", 0.0,
+        0.99, 4, 0.99
     )
     agent2 = Agent(
         env.state_shape,
         env.action_dim, 
-        0.0001, 10000, 1024,
-        1.0, "0.0001", 0.5,
-        0.99, 9, 0.99
+        0.0001, 100000, 1024,
+        1.0, "0.000005", 0.0,
+        0.99, 4, 0.99
     )
     iteration = 10000
     for i in range(iteration):
@@ -363,7 +370,7 @@ if __name__ == "__main__":
                 agent2_transition.clear()
                 after_first = True
 
-                if agent1.replay_buffer.is_ready() and agent2.replay_buffer.is_ready():
+                if agent1.replay_buffer.is_full() and agent2.replay_buffer.is_full():
                     loss1 = agent1.train()
                     loss2 = agent2.train()
         
