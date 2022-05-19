@@ -11,32 +11,21 @@ import numpy as np
 class Network(nn.Module):
     def __init__(self, output_dim: int, learning_rate: float) -> None:
         super(Network, self).__init__()
-        self.feature_layers = nn.Sequential(
-            nn.Conv2d(1, 64, 4),
-            nn.ReLU(),
-            nn.Conv2d(64, 32, 2),
-            nn.ReLU(),
-            nn.Conv2d(32, 16, 2),
+        self.layers = nn.Sequential(
             nn.Flatten(),
-        )
-        self.advantage_layers = nn.Sequential(
-            nn.Linear(32, 16),
+            nn.Linear(42, 64),
             nn.ReLU(),
-            nn.Linear(16, output_dim)
-        )
-        self.value_layers = nn.Sequential(
-            nn.Linear(32, 8),
+            nn.Linear(64, 64),
             nn.ReLU(),
-            nn.Linear(8, 1)
+            nn.Linear(64, 64),
+            nn.ReLU(),
+            nn.Linear(64, output_dim)
         )
-        self.optimizer = optim.RMSprop(self.parameters(), lr = learning_rate)
-        self.loss = nn.MSELoss()
+        self.optimizer = optim.Adam(self.parameters(), lr = learning_rate)
+        self.loss = nn.SmoothL1Loss()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        feature = self.feature_layers(x)
-        advantage = self.advantage_layers(feature)
-        value = self.value_layers(feature)
-        return value + advantage - advantage.mean(dim = -1, keepdim = True)
+        return self.layers(x)
 
 
 class Epsilon_Controller:
@@ -209,7 +198,7 @@ class Agent:
     def train(self) -> torch.Tensor:
         batch = self.replay_buffer.sample()
         indexes = batch.get("indexes")
-        loss = self._compute_loss(batch, indexes)
+        loss = self._compute_loss(batch, self.gamma)
 
         batch = self.n_step_replay_buffer.sample_from_idxs(indexes)
         gamma = self.gamma ** self.n_step_replay_buffer.n_step
@@ -241,16 +230,16 @@ if __name__ == "__main__":
     agent1 = Agent(
         env.state_shape,
         env.action_dim, 
-        0.0001, 20000, 1024,
-        1.0, "0.0001", 0.001,
-        0.99, 6, 0.99
+        0.0001, 10000, 1024,
+        1.0, "0.0001", 0.5,
+        0.99, 9, 0.99
     )
     agent2 = Agent(
         env.state_shape,
         env.action_dim, 
-        0.0001, 20000, 1024,
-        1.0, "0.0001", 0.001,
-        0.99, 6, 0.99
+        0.0001, 10000, 1024,
+        1.0, "0.0001", 0.5,
+        0.99, 9, 0.99
     )
     iteration = 10000
     for i in range(iteration):
