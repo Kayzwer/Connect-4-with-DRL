@@ -313,7 +313,7 @@ if __name__ == "__main__":
                 agent1_transition.clear()
                 after_first = True
 
-                if agent1.replay_buffer.is_ready() and agent2.replay_buffer.is_ready():
+                if agent1.replay_buffer.is_full() and agent2.replay_buffer.is_full():
                     loss1 = agent1.train()
                     loss2 = agent2.train()
         else:
