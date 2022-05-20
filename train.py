@@ -73,38 +73,19 @@ class Replay_Buffer:
         self.reward_memory = np.zeros(buffer_size, dtype = np.float32)
         self.next_state_memory = np.zeros((buffer_size, *input_dim), dtype = np.float32)
 
-        self.n_step_buffer = deque(maxlen = n_step)
-        self.n_step = n_step
-        self.gamma = gamma
-
     def store(
         self,
         state: np.ndarray,
         action: int,
         reward: float,
         next_state: np.ndarray
-    ) -> Tuple[np.ndarray, int, float, np.ndarray]:
-        transition = (state, action, reward, next_state)
-        self.n_step_buffer.append(transition)
-        if len(self.n_step_buffer) < self.n_step:
-            return ()
-        reward, next_state = self._get_n_step_info(self.n_step_buffer, self.gamma)
-        state, action = self.n_step_buffer[0][:2]
+    ) -> None:
         self.state_memory[self.ptr] = state
         self.action_memory[self.ptr] = action
         self.reward_memory[self.ptr] = reward
         self.next_state_memory[self.ptr] = next_state
         self.ptr = (self.ptr + 1) % self.buffer_size
         self.cur_size = min(self.cur_size + 1, self.buffer_size)
-        return self.n_step_buffer[0]
-    
-    def _get_n_step_info(self, n_step_buffer: Deque, gamma: float) -> Tuple[np.longlong, np.ndarray]:
-        reward, next_state = n_step_buffer[-1][-2:]
-        for transition in reversed(list(n_step_buffer)[:-1]):
-            r, n_s = transition[-2:]
-            reward = r + gamma * reward
-            next_state = n_s
-        return reward, next_state
     
     def sample(self) -> Dict[str, np.ndarray]:
         indexes = np.random.choice(self.cur_size, self.batch_size, False)
@@ -119,20 +100,9 @@ class Replay_Buffer:
             next_states = torch.from_numpy(next_states),
             indexes = torch.from_numpy(indexes)
         )
-    
-    def sample_from_idxs(self, indexes: torch.Tensor) -> Dict[str, np.ndarray]:
-        return dict(
-            states = torch.from_numpy(self.state_memory[indexes]),
-            actions = torch.from_numpy(self.action_memory[indexes]),
-            rewards = torch.from_numpy(self.reward_memory[indexes]),
-            next_states = torch.from_numpy(self.next_state_memory[indexes])
-        )
-    
+
     def is_ready(self) -> bool:
         return self.cur_size >= self.batch_size
-    
-    def is_full(self) -> bool:
-        return self.cur_size == self.buffer_size
 
 
 class Agent:
@@ -147,13 +117,11 @@ class Agent:
         eps_dec_rate: str, 
         min_eps: float,
         gamma: float,
-        n_step: int,
         tau: int
     ) -> None:
         self.network = Network(output_dim, learning_rate)
         self.target_network = Network(output_dim, learning_rate)
-        self.replay_buffer = Replay_Buffer(buffer_size, batch_size, input_dim, 1, gamma)
-        self.n_step_replay_buffer = Replay_Buffer(buffer_size, batch_size, input_dim, n_step, gamma)
+        self.replay_buffer = Replay_Buffer(buffer_size, batch_size, input_dim)
         self.epsilon_controller = Epsilon_Controller(init_eps, eps_dec_rate, min_eps)
         self.output_dim = output_dim
         self.gamma = gamma
@@ -168,10 +136,7 @@ class Agent:
         if np.random.random() <= self.epsilon_controller.eps:
             action = np.random.choice(self.output_dim)
         else:
-            q_values = self.network.forward(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0))
-            q_values -= q_values.max()
-            probs = F.softmax(q_values, dim = -1).squeeze().detach().numpy()
-            action = np.random.choice(self.output_dim, p = probs)
+            action = self.network.forward(torch.as_tensor(state, dtype = torch.float32).unsqueeze(0)).argmax().item()
         if env._check_valid(action):
             return action
         else:
@@ -190,7 +155,7 @@ class Agent:
                 if env._check_valid(action):
                     return action
 
-    def _compute_loss(self, batch: Dict[str, np.ndarray], gamma: float) -> torch.Tensor:
+    def _compute_loss(self, batch: Dict[str, np.ndarray]) -> torch.Tensor:
         states = batch.get("states")
         actions = batch.get("actions")
         rewards = batch.get("rewards")
@@ -199,19 +164,14 @@ class Agent:
 
         q_pred = self.network.forward(states)[batch_index, actions]
         q_next = self.target_network.forward(next_states)[batch_index, self.network.forward(next_states).argmax(1)]
-        q_target = rewards + gamma * q_next
+        q_target = rewards + self.gamma * q_next
         return self.network.loss(q_pred, q_target)
     
     def train(self) -> torch.Tensor:
         batch = self.replay_buffer.sample()
         indexes = batch.get("indexes")
-        loss = self._compute_loss(batch, self.gamma)
+        loss = self._compute_loss(batch)
 
-        batch = self.n_step_replay_buffer.sample_from_idxs(indexes)
-        gamma = self.gamma ** self.n_step_replay_buffer.n_step
-        n_loss = self._compute_loss(batch, gamma)
-        loss += n_loss
-        
         self.network.optimizer.zero_grad()
         loss.backward()
         self.network.optimizer.step()
@@ -266,14 +226,10 @@ if __name__ == "__main__":
                 state, reward_1, reward_2, done = env.step(action1, 1)
                 if done:
                     agent1_transition += [reward_1, state]
-                    one_step_transition1 = agent1.n_step_replay_buffer.store(*agent1_transition)
-                    if one_step_transition1:
-                        agent1.replay_buffer.store(*one_step_transition1)
+                    agent1.replay_buffer.store(*agent1_transition)
                     agent1_transition.clear()
                     agent2_transition += [reward_2, state]
-                    one_step_transition2 = agent2.n_step_replay_buffer.store(*agent2_transition)
-                    if one_step_transition2:
-                        agent2.replay_buffer.store(*one_step_transition2)
+                    agent2.replay_buffer.store(*agent2_transition)
                     agent2_transition.clear()
                     if reward_1 == 0.0:
                         winner = "Draw"
@@ -282,9 +238,7 @@ if __name__ == "__main__":
                     break
                 if after_first:
                     agent2_transition += [reward_2, state]
-                    one_step_transition2 = agent2.n_step_replay_buffer.store(*agent2_transition)
-                    if one_step_transition2:
-                        agent2.replay_buffer.store(*one_step_transition2)
+                    agent2.replay_buffer.store(*agent2_transition)
                     agent2_transition.clear()
             
                 action2 = agent2.choose_action_train(state, env)
@@ -292,14 +246,10 @@ if __name__ == "__main__":
                 state, reward_1, reward_2, done = env.step(action2, -1)
                 if done:
                     agent1_transition += [reward_1, state]
-                    one_step_transition1 = agent1.n_step_replay_buffer.store(*agent1_transition)
-                    if one_step_transition1:
-                        agent1.replay_buffer.store(*one_step_transition1)
+                    agent1.replay_buffer.store(*agent1_transition)
                     agent1_transition.clear()
                     agent2_transition += [reward_2, state]
-                    one_step_transition2 = agent2.n_step_replay_buffer.store(*agent2_transition)
-                    if one_step_transition2:
-                        agent2.replay_buffer.store(*one_step_transition2)
+                    agent2.replay_buffer.store(*agent2_transition)
                     agent2_transition.clear()
                     if reward_2 == 0.0:
                         winner = "Draw"
@@ -307,13 +257,11 @@ if __name__ == "__main__":
                         winner = "Player 2"
                     break
                 agent1_transition += [reward_1, state]
-                one_step_transition1 = agent1.n_step_replay_buffer.store(*agent1_transition)
-                if one_step_transition1:
-                    agent1.replay_buffer.store(*one_step_transition1)
+                agent1.replay_buffer.store(*agent1_transition)
                 agent1_transition.clear()
                 after_first = True
 
-                if agent1.replay_buffer.is_full() and agent2.replay_buffer.is_full():
+                if agent1.replay_buffer.is_ready() and agent2.replay_buffer.is_ready():
                     loss1 = agent1.train()
                     loss2 = agent2.train()
         else:
@@ -323,14 +271,10 @@ if __name__ == "__main__":
                 state, reward_1, reward_2, done = env.step(action2, -1)
                 if done:
                     agent2_transition += [reward_2, state]
-                    one_step_transition2 = agent2.n_step_replay_buffer.store(*agent2_transition)
-                    if one_step_transition2:
-                        agent2.replay_buffer.store(*one_step_transition2)
+                    agent2.replay_buffer.store(*agent2_transition)
                     agent2_transition.clear()
                     agent1_transition += [reward_1, state]
-                    one_step_transition1 = agent1.n_step_replay_buffer.store(*agent1_transition)
-                    if one_step_transition1:
-                        agent1.replay_buffer.store(*one_step_transition1)
+                    agent1.replay_buffer.store(*agent1_transition)
                     agent1_transition.clear()
                     if reward_2 == 0.0:
                         winner = "Draw"
@@ -339,9 +283,7 @@ if __name__ == "__main__":
                     break
                 if after_first:
                     agent1_transition += [reward_1, state]
-                    one_step_transition1 = agent1.n_step_replay_buffer.store(*agent1_transition)
-                    if one_step_transition1:
-                        agent1.replay_buffer.store(*one_step_transition1)
+                    agent1.replay_buffer.store(*agent1_transition)
                     agent1_transition.clear()
             
                 action1 = agent1.choose_action_train(state, env)
@@ -349,14 +291,10 @@ if __name__ == "__main__":
                 state, reward_1, reward_2, done = env.step(action1, 1)
                 if done:
                     agent2_transition += [reward_2, state]
-                    one_step_transition2 = agent2.n_step_replay_buffer.store(*agent2_transition)
-                    if one_step_transition2:
-                        agent2.replay_buffer.store(*one_step_transition2)
+                    agent2.replay_buffer.store(*agent2_transition)
                     agent2_transition.clear()
                     agent1_transition += [reward_1, state]
-                    one_step_transition1 = agent1.n_step_replay_buffer.store(*agent1_transition)
-                    if one_step_transition1:
-                        agent1.replay_buffer.store(*one_step_transition1)
+                    agent1.replay_buffer.store(*agent1_transition)
                     agent1_transition.clear()
                     if reward_1 == 0.0:
                         winner = "Draw"
@@ -364,13 +302,11 @@ if __name__ == "__main__":
                         winner = "Player 1"
                     break
                 agent2_transition += [reward_2, state]
-                one_step_transition2 = agent2.n_step_replay_buffer.store(*agent2_transition)
-                if one_step_transition2:
-                    agent2.replay_buffer.store(*one_step_transition2)
+                agent2.replay_buffer.store(*agent2_transition)
                 agent2_transition.clear()
                 after_first = True
 
-                if agent1.replay_buffer.is_full() and agent2.replay_buffer.is_full():
+                if agent1.replay_buffer.is_ready() and agent2.replay_buffer.is_ready():
                     loss1 = agent1.train()
                     loss2 = agent2.train()
         
