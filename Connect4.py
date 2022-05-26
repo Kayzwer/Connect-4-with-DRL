@@ -8,13 +8,13 @@ class Connect4:
         self.state_dim = 42
         self.action_space = np.arange(7)
         self.action_dim = len(self.action_space)
-        
+
         self.board = np.full(self.state_shape, 0)
         self._col_ptr = np.full(self.action_dim, 5)
 
     def __str__(self) -> str:
         return self.board.__str__()
-    
+
     def reset(self) -> np.ndarray:
         self.__init__()
         return self.board.reshape(6, 7)
@@ -35,7 +35,8 @@ class Connect4:
     def _get_hors(self) -> List[List[int]]:
         horizontals = []
         for index in range(6):
-            horizontals.extend([list(self.board[index])[i:i + 4] for i in range(4)])
+            horizontals.extend([list(self.board[index])[i:i + 4]
+                                for i in range(4)])
         return horizontals
 
     def _get_diags(self) -> List[List[int]]:
@@ -57,7 +58,7 @@ class Connect4:
                 break
         if draw:
             return -1
-        
+
         pattern = [[1, 1, 1, 1], [-1, -1, -1, -1]]
         for ver in self._get_vers():
             if ver in pattern:
@@ -70,7 +71,8 @@ class Connect4:
                 return pattern.index(diag) + 1
         return 0
 
-    def step(self, action: int, token: int) -> Tuple[np.ndarray, float, float, bool]:
+    def step(self, action: int, token: int) -> Tuple[np.ndarray, float, float,
+                                                     bool]:
         assert 0 <= action <= 6
         row = self._col_ptr[action]
         if row == -1:
