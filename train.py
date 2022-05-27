@@ -230,18 +230,18 @@ if __name__ == "__main__":
     agent1 = Agent(
         env.state_size,
         env.action_n,
-        0.0001, 100000, 2048,
+        0.0001, 100000, 1024,
         1.0, "0.000005", 0.0,
-        0.99, 10000, 0.5,
-        0.5, 0.1
+        0.99, 0.05, 0.5,
+        0.5, 0.001
     )
     agent2 = Agent(
         env.state_size,
         env.action_n,
-        0.0001, 100000, 2048,
+        0.0001, 100000, 1024,
         1.0, "0.000005", 0.0,
-        0.99, 10000, 0.5,
-        0.5, 0.1
+        0.99, 0.05, 0.5,
+        0.5, 0.001
     )
     iteration = 10000
     for i in range(iteration):
@@ -348,12 +348,9 @@ if __name__ == "__main__":
                     loss2 = agent2.train()
         agent1.reset_trace()
         agent2.reset_trace()
-
-        if (i + 1) % 100 == 0:
-            print(f"Iteration: {i + 1}, Winner: {winner}, Agent1 Loss: {loss1}"
-                  f", Agent2 Loss: {loss2}, Epsilon:"
-                  f" {agent1.epsilon_controller.eps}"
-                  )
+        print(f"Iteration: {i + 1}, Winner: {winner}, Agent1 Loss: {loss1}, "
+              f"Agent2 Loss: {loss2}, Epsilon: {agent1.epsilon_controller.eps}"
+              )
 
         if (i + 1) % 50 == 0:
 
