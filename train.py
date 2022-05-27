@@ -149,6 +149,7 @@ class Agent:
 
     def update_network(self) -> None:
         self.target_network.load_state_dict(self.network.state_dict())
+        print("Target Network Updated")
 
     def choose_action_train(self, state: torch.Tensor, env: Connect4) -> int:
         if np.random.random() <= self.epsilon_controller.eps:
@@ -232,16 +233,16 @@ if __name__ == "__main__":
         env.action_n,
         0.0001, 100000, 1024,
         1.0, "0.000005", 0.0,
-        0.99, 0.05, 0.5,
-        0.5, 0.001
+        0.99, 10e6, 0.8,
+        0.5, 0.1
     )
     agent2 = Agent(
         env.state_size,
         env.action_n,
         0.0001, 100000, 1024,
         1.0, "0.000005", 0.0,
-        0.99, 0.05, 0.5,
-        0.5, 0.001
+        0.99, 10e6, 0.8,
+        0.5, 0.1
     )
     iteration = 10000
     for i in range(iteration):
@@ -348,9 +349,10 @@ if __name__ == "__main__":
                     loss2 = agent2.train()
         agent1.reset_trace()
         agent2.reset_trace()
-        print(f"Iteration: {i + 1}, Winner: {winner}, Agent1 Loss: {loss1}, "
-              f"Agent2 Loss: {loss2}, Epsilon: {agent1.epsilon_controller.eps}"
-              )
+
+        print(f"Iteration: {i + 1}, Winner: {winner}, Agent1 Loss: {loss1}"
+              f", Agent2 Loss: {loss2}, Epsilon:"
+              f" {agent1.epsilon_controller.eps}")
 
         if (i + 1) % 50 == 0:
 
