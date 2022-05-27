@@ -3,6 +3,8 @@ from typing import Dict
 import pickle
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import torch.autograd as ag
 import torch.optim as optim
 import numpy as np
 
@@ -11,7 +13,6 @@ class Network(nn.Module):
     def __init__(self, output_dim: int, learning_rate: float) -> None:
         super(Network, self).__init__()
         self.layers = nn.Sequential(
-            nn.Flatten(),
             nn.Linear(42, 64),
             nn.ReLU(),
             nn.Linear(64, 64),
@@ -60,19 +61,17 @@ class Replay_Buffer:
         self,
         buffer_size: int,
         batch_size: int,
-        input_dim: tuple,
-        n_step: int,
-        gamma: float,
+        input_size: int
     ) -> None:
         self.ptr = 0
         self.cur_size = 0
         self.buffer_size = buffer_size
         self.batch_size = batch_size
-        self.state_memory = np.zeros((buffer_size, *input_dim),
+        self.state_memory = np.zeros((buffer_size, input_size),
                                      dtype=np.float32)
         self.action_memory = np.zeros(buffer_size, dtype=np.longlong)
         self.reward_memory = np.zeros(buffer_size, dtype=np.float32)
-        self.next_state_memory = np.zeros((buffer_size, *input_dim),
+        self.next_state_memory = np.zeros((buffer_size, input_size),
                                           dtype=np.float32)
 
     def store(
@@ -110,7 +109,7 @@ class Replay_Buffer:
 class Agent:
     def __init__(
         self,
-        input_dim: tuple,
+        input_size: int,
         output_dim: int,
         learning_rate: float,
         buffer_size: int,
@@ -119,31 +118,44 @@ class Agent:
         eps_dec_rate: str,
         min_eps: float,
         gamma: float,
-        tau: int
+        c: int,
+        lamb: float,
+        eta: float,
+        beta: float
     ) -> None:
         self.network = Network(output_dim, learning_rate)
         self.target_network = Network(output_dim, learning_rate)
-        self.replay_buffer = Replay_Buffer(buffer_size, batch_size, input_dim)
+        self.replay_buffer = Replay_Buffer(buffer_size, batch_size, input_size)
         self.epsilon_controller = Epsilon_Controller(init_eps, eps_dec_rate,
                                                      min_eps)
         self.output_dim = output_dim
         self.gamma = gamma
-        self.tau = tau
-        self.target_network.load_state_dict(self.network.state_dict())
+        self.c = c
+        self.lamb = lamb
+        self.eta = eta
+        self.eta_p = 1 - eta
+        self.beta = beta
+        self.trace = dict()
+        self.exp_trace_param = torch.rand((7, 42), requires_grad=True)
+        self.batch_index = np.arange(self.replay_buffer.batch_size,
+                                     dtype=np.longlong)
+        self.update_count = 0
+        self.update_network()
+        self.reset_trace()
+
+    def reset_trace(self) -> None:
+        for idx, param_set in enumerate(self.network.parameters()):
+            self.trace[idx] = torch.zeros(param_set.data.shape)
 
     def update_network(self) -> None:
-        for target_network_param, network_param in zip(
-            self.target_network.parameters(), self.network.parameters()
-        ):
-            target_network_param.data.copy_(self.tau * network_param + (1 -
-                                            self.tau) * target_network_param)
+        self.target_network.load_state_dict(self.network.state_dict())
 
     def choose_action_train(self, state: torch.Tensor, env: Connect4) -> int:
         if np.random.random() <= self.epsilon_controller.eps:
             action = np.random.choice(self.output_dim)
         else:
             action = self.network.forward(
-                torch.as_tensor(state, dtype=torch.float32).unsqueeze(0)
+                torch.as_tensor(state, dtype=torch.float32)
             ).argmax().item()
         if env._check_valid(action):
             return action
@@ -155,7 +167,7 @@ class Agent:
 
     def choose_action_test(self, state: torch.Tensor, env: Connect4) -> int:
         action = self.network.forward(
-            torch.as_tensor(state, dtype=torch.float32).unsqueeze(0)
+            torch.as_tensor(state, dtype=torch.float32)
         ).argmax().item()
         if env._check_valid(action):
             return action
@@ -165,29 +177,38 @@ class Agent:
                 if env._check_valid(action):
                     return action
 
-    def _compute_loss(self, batch: Dict[str, np.ndarray]) -> torch.Tensor:
+    def train(self) -> torch.Tensor:
+        batch = self.replay_buffer.sample()
         states = batch.get("states")
         actions = batch.get("actions")
         rewards = batch.get("rewards")
         next_states = batch.get("next_states")
-        batch_index = np.arange(self.replay_buffer.batch_size,
-                                dtype=np.longlong)
 
-        q_pred = self.network.forward(states)[batch_index, actions]
+        q_pred = self.network.forward(states)[self.batch_index, actions]
         q_next = self.target_network.forward(
             next_states
-        )[batch_index, self.network.forward(next_states).argmax(1)]
+        )[self.batch_index, self.network.forward(next_states).argmax(1)]
+        ind_trace = list(self.trace.keys())[-1]
+        self.exp_trace = torch.matmul(self.exp_trace_param,
+                                      states.transpose(0, 1))
+        exp_trace_mean = self.exp_trace.mean(1)
+        trace_loss = F.mse_loss(exp_trace_mean, self.trace[ind_trace])
+        trace_grad = ag.grad(trace_loss, self.exp_trace_param)[0]
+        self.exp_trace_param = self.exp_trace_param + self.beta * trace_grad
+        self.trace[ind_trace] = self.eta_p * exp_trace_mean + \
+            self.eta * self.trace[ind_trace]
         q_target = rewards + self.gamma * q_next
-        return self.network.loss(q_pred, q_target.detach())
-
-    def train(self) -> torch.Tensor:
-        batch = self.replay_buffer.sample()
-        loss = self._compute_loss(batch)
-
+        loss = self.network.loss(q_pred, q_target.detach())
         self.network.optimizer.zero_grad()
-        loss.backward()
+        eval_gradients = ag.grad(loss, self.network.parameters())
+        for idx, param_set in enumerate(self.network.parameters()):
+            self.trace[idx] = self.gamma * self.lamb * self.trace[idx] + \
+                eval_gradients[idx]
+            param_set.grad = loss * self.trace[idx]
         self.network.optimizer.step()
-        self.update_network()
+        self.update_count += 1
+        if self.update_count % self.c == 0:
+            self.update_network()
         self.epsilon_controller.decay()
         return loss
 
@@ -207,18 +228,20 @@ class Agent:
 if __name__ == "__main__":
     env = Connect4()
     agent1 = Agent(
-        env.state_shape,
-        env.action_dim,
+        env.state_size,
+        env.action_n,
         0.0001, 100000, 1024,
         1.0, "0.000005", 0.0,
-        0.99, 4, 0.99
+        0.99, 0.05, 0.5,
+        0.5, 0.001
     )
     agent2 = Agent(
-        env.state_shape,
-        env.action_dim,
+        env.state_size,
+        env.action_n,
         0.0001, 100000, 1024,
         1.0, "0.000005", 0.0,
-        0.99, 4, 0.99
+        0.99, 0.05, 0.5,
+        0.5, 0.001
     )
     iteration = 10000
     for i in range(iteration):
@@ -323,9 +346,10 @@ if __name__ == "__main__":
                    agent2.replay_buffer.is_ready():
                     loss1 = agent1.train()
                     loss2 = agent2.train()
-
-        print(f"Iteration: {i + 1}, Winner: {winner}, Agent1 Loss: {loss1}, \
-                Agent2 Loss: {loss2}, Epsilon: {agent1.epsilon_controller.eps}"
+        agent1.reset_trace()
+        agent2.reset_trace()
+        print(f"Iteration: {i + 1}, Winner: {winner}, Agent1 Loss: {loss1}, "
+              f"Agent2 Loss: {loss2}, Epsilon: {agent1.epsilon_controller.eps}"
               )
 
         if (i + 1) % 50 == 0:
