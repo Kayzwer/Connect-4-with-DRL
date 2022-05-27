@@ -24,7 +24,7 @@ while not done:
     print(env)
 
     action2 = agent2.choose_action_test(state, env)
-    state, reward1, reward2, done = env.step(action2, 1)
+    state, reward1, reward2, done = env.step(action2, -1)
     if done:
         print(env)
         if reward2 == 0:
