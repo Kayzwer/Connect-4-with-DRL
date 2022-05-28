@@ -21,7 +21,7 @@ class Network(nn.Module):
             nn.ReLU(),
             nn.Linear(64, output_dim)
         )
-        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        self.optimizer = optim.RMSprop(self.parameters(), lr=learning_rate)
         self.loss = nn.SmoothL1Loss()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -211,39 +211,15 @@ class Agent:
         if self.update_count % self.c == 0:
             self.update_network()
         self.epsilon_controller.decay()
-        return loss
-
-    def test(self, n_game: int, env: Connect4) -> None:
-        for i in range(n_game):
-            state = env.reset()
-            done = False
-            score = 0
-            while not done:
-                action = self.choose_action_test(state, env)
-                state, reward, done = env.step(action)
-                print(env)
-                score += reward
-            print(f"Game: {i + 1}, Score: {score}")
+        return loss.item()
 
 
 if __name__ == "__main__":
     env = Connect4()
-    agent1 = Agent(
-        env.state_size,
-        env.action_n,
-        0.0001, 100000, 1024,
-        1.0, "0.000005", 0.0,
-        0.99, 10e6, 0.8,
-        0.5, 0.1
-    )
-    agent2 = Agent(
-        env.state_size,
-        env.action_n,
-        0.0001, 100000, 1024,
-        1.0, "0.000005", 0.0,
-        0.99, 10e6, 0.8,
-        0.5, 0.1
-    )
+    agent1 = Agent(env.state_size, env.action_n, 0.0001, 100000, 2048, 1.0,
+                   "0.000005", 0.0, 0.99, 10e6, 0.8, 0.5, 0.1)
+    agent2 = Agent(env.state_size, env.action_n, 0.0001, 100000, 2048, 1.0,
+                   "0.000005", 0.0, 0.99, 10e6, 0.8, 0.5, 0.1)
     iteration = 10000
     for i in range(iteration):
         state = env.reset()
@@ -299,8 +275,8 @@ if __name__ == "__main__":
 
                 if agent1.replay_buffer.is_ready() and \
                    agent2.replay_buffer.is_ready():
-                    loss1 = agent1.train()
-                    loss2 = agent2.train()
+                    loss1 += agent1.train()
+                    loss2 += agent2.train()
         else:
             while not done:
                 action2 = agent2.choose_action_train(state, env)
@@ -345,16 +321,17 @@ if __name__ == "__main__":
 
                 if agent1.replay_buffer.is_ready() and \
                    agent2.replay_buffer.is_ready():
-                    loss1 = agent1.train()
-                    loss2 = agent2.train()
+                    loss1 += agent1.train()
+                    loss2 += agent2.train()
         agent1.reset_trace()
         agent2.reset_trace()
 
-        print(f"Iteration: {i + 1}, Winner: {winner}, Agent1 Loss: {loss1}"
-              f", Agent2 Loss: {loss2}, Epsilon:"
-              f" {agent1.epsilon_controller.eps}")
+        if (i + 1) % 500 == 0:
+            print(f"Iteration: {i + 1}, Winner: {winner}, Agent1 Loss: {loss1}"
+                  f", Agent2 Loss: {loss2}, Epsilon:"
+                  f" {agent1.epsilon_controller.eps}")
 
-        if (i + 1) % 50 == 0:
+        if (i + 1) % 1000 == 0:
 
             with open("DDQN Connect 4 Agent1.pickle", "wb") as f:
                 pickle.dump(agent1, f)
