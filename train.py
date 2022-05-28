@@ -21,7 +21,7 @@ class Network(nn.Module):
             nn.ReLU(),
             nn.Linear(64, output_dim)
         )
-        self.optimizer = optim.RMSprop(self.parameters(), lr=learning_rate)
+        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
         self.loss = nn.SmoothL1Loss()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
