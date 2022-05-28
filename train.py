@@ -13,13 +13,17 @@ class Network(nn.Module):
     def __init__(self, output_dim: int, learning_rate: float) -> None:
         super(Network, self).__init__()
         self.layers = nn.Sequential(
-            nn.Linear(42, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-            nn.ReLU(),
-            nn.Linear(64, output_dim)
+            nn.Linear(42, 256),
+            nn.ReLU6(),
+            nn.Linear(256, 256),
+            nn.ReLU6(),
+            nn.Linear(256, 256),
+            nn.ReLU6(),
+            nn.Linear(256, 256),
+            nn.ReLU6(),
+            nn.Linear(256, 256),
+            nn.ReLU6(),
+            nn.Linear(256, output_dim)
         )
         self.optimizer = optim.RMSprop(self.parameters(), lr=learning_rate)
         self.loss = nn.SmoothL1Loss()
