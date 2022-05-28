@@ -21,7 +21,7 @@ class Network(nn.Module):
             nn.ReLU(),
             nn.Linear(64, output_dim)
         )
-        self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        self.optimizer = optim.RMSprop(self.parameters(), lr=learning_rate)
         self.loss = nn.SmoothL1Loss()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -217,9 +217,9 @@ class Agent:
 if __name__ == "__main__":
     env = Connect4()
     agent1 = Agent(env.state_size, env.action_n, 0.0001, 100000, 2048, 1.0,
-                   "0.000005", 0.0, 0.99, 10e6, 0.8, 0.5, 0.1)
+                   "0.000005", 0.0, 0.99, 10e6, 0.8, 0.5, 0.001)
     agent2 = Agent(env.state_size, env.action_n, 0.0001, 100000, 2048, 1.0,
-                   "0.000005", 0.0, 0.99, 10e6, 0.8, 0.5, 0.1)
+                   "0.000005", 0.0, 0.99, 10e6, 0.8, 0.5, 0.001)
     iteration = 10000
     for i in range(iteration):
         state = env.reset()
