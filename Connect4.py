@@ -12,7 +12,18 @@ class Connect4:
         self._col_ptr = np.full(self.action_n, 5)
 
     def __str__(self) -> str:
-        return self.board.__str__()
+        output_str = ""
+        for row in self.board:
+            for block in row:
+                if block == 1:
+                    output_str += "X"
+                elif block == -1:
+                    output_str += "O"
+                else:
+                    output_str += "_"
+                output_str += " "
+            output_str += "\n"
+        return output_str
 
     def reset(self) -> np.ndarray:
         self.__init__()
