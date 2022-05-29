@@ -13,17 +13,15 @@ class Network(nn.Module):
     def __init__(self, output_dim: int, learning_rate: float) -> None:
         super(Network, self).__init__()
         self.layers = nn.Sequential(
-            nn.Linear(42, 256),
-            nn.ReLU6(),
-            nn.Linear(256, 256),
-            nn.ReLU6(),
-            nn.Linear(256, 256),
-            nn.ReLU6(),
-            nn.Linear(256, 256),
-            nn.ReLU6(),
-            nn.Linear(256, 256),
-            nn.ReLU6(),
-            nn.Linear(256, output_dim)
+            nn.Linear(42, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.ReLU(),
+            nn.Linear(128, output_dim)
         )
         self.optimizer = optim.RMSprop(self.parameters(), lr=learning_rate)
         self.loss = nn.SmoothL1Loss()
@@ -221,9 +219,9 @@ class Agent:
 if __name__ == "__main__":
     env = Connect4()
     agent1 = Agent(env.state_size, env.action_n, 0.0001, 100000, 2048, 1.0,
-                   "0.000005", 0.001, 0.99, 500000, 0.8, 0.5, 0.001)
+                   "0.000005", 0.001, 0.99, 100000, 0.95, 0.5, 0.001)
     agent2 = Agent(env.state_size, env.action_n, 0.0001, 100000, 2048, 1.0,
-                   "0.000005", 0.001, 0.99, 500000, 0.8, 0.5, 0.001)
+                   "0.000005", 0.001, 0.99, 100000, 0.95, 0.5, 0.001)
     iteration = 10000
     for i in range(iteration):
         state = env.reset()
